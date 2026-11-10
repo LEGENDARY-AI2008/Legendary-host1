@@ -48,6 +48,8 @@ a{color:var(--acc)}
       <div class="row"><div><label for="wt">Mode</label><select id="wt"><option value="public">Public</option><option value="private">Private</option></select></div>
       <div><label for="tz">Timezone</label><input id="tz" value="Africa/Lagos"></div></div>
       <button class="go" id="b1">Deploy my bot</button>
+      <button class="go" id="b1p" type="button" style="margin-top:8px">Deploy with Legendary free panel</button>
+      <p class="tip">Free panel warning: this may not always be stable or available. If you need your bot running all the time, use the normal deploy (Render).</p>
     </form>
     <form id="f2" class="hide">
       <label for="sid2">Session ID</label><textarea id="sid2" required></textarea>
@@ -77,9 +79,12 @@ async function load(){try{const s=await api('status');$('lnk').href=s.url;$('lnk
   $('st').textContent=s.suspended==='suspended'?'Suspended':(s.deploy==='live'?'Live':'Status: '+(s.deploy||'starting'));
   const l=await api('logs');const p=$('log');const bottom=p.scrollTop+p.clientHeight>=p.scrollHeight-20;
   p.textContent=l.lines.join('\n')||'No logs yet. Build dey start.';if(bottom)p.scrollTop=p.scrollHeight}catch(e){say($('dm'),e.message,'bad')}}
-$('f1').onsubmit=async e=>{e.preventDefault();$('b1').disabled=true;say($('m'),'Deploying... e fit take small time.');
-  try{const d=await api('deploy',{method:'POST',body:JSON.stringify({sessionId:$('sid').value,ownerNumber:$('num').value,ownerName:$('own').value,botName:$('bn').value,prefix:$('pf').value,workType:$('wt').value,timezone:$('tz').value})});enter(d.token)}
-  catch(err){say($('m'),err.message,'bad')}$('b1').disabled=false};
+async function deploy(provider){const btns=[$('b1'),$('b1p')];btns.forEach(b=>b.disabled=true);say($('m'),'Deploying... e fit take small time.');
+  try{const d=await api('deploy',{method:'POST',body:JSON.stringify({provider,sessionId:$('sid').value,ownerNumber:$('num').value,ownerName:$('own').value,botName:$('bn').value,prefix:$('pf').value,workType:$('wt').value,timezone:$('tz').value})});
+    if(d.provider==='panel'){say($('m'),'Bot don deploy on the free panel. Manage am here: '+d.url,'ok')}else{enter(d.token)}}
+  catch(err){say($('m'),err.message,'bad')}btns.forEach(b=>b.disabled=false)}
+$('f1').onsubmit=e=>{e.preventDefault();deploy('render')};
+$('b1p').onclick=()=>deploy('panel');
 $('f2').onsubmit=async e=>{e.preventDefault();$('b2').disabled=true;
   try{const d=await api('login',{method:'POST',body:JSON.stringify({sessionId:$('sid2').value})});enter(d.token)}catch(err){say($('m'),err.message,'bad')}$('b2').disabled=false};
 $('cp').onclick=()=>navigator.clipboard.writeText($('lnk').href).then(()=>say($('dm'),'Link copied','ok'));

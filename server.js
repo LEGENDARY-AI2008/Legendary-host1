@@ -5,6 +5,7 @@
 const express = require('express')
 const crypto = require('crypto')
 const path = require('path')
+const panel = require('./panel')
 
 const { RENDER_API_KEY, OWNER_ID, LOADER_REPO, APP_SECRET } = process.env
 const PLAN = process.env.PLAN || 'free'
@@ -15,6 +16,7 @@ if (!RENDER_API_KEY || !OWNER_ID || !LOADER_REPO || !APP_SECRET) {
 }
 
 const app = express()
+app.set('trust proxy', 1) // Render sits behind a proxy: rate limit per real visitor, not per proxy
 app.use(express.json({ limit: '20kb' }))
 app.use(express.static(path.join(__dirname, 'public')))
 
@@ -93,6 +95,21 @@ app.post('/api/deploy', limit, async (req, res) => {
     for (const v of [SESSION_ID, OWNER_NAME, BOT_NAME, PREFIX]) if (!noBreaks(v)) return res.status(400).json({ error: 'No new line or = sign allowed for these fields' })
 
     const name = nameFor(SESSION_ID)
+
+    // Free panel: one capped server per bot, managed on the panel itself.
+    if (b.provider === 'panel') {
+      if (!panel.enabled) return res.status(503).json({ error: 'Free panel no dey ready now. Use Render option.' })
+      if (await panel.findPanelServer(name)) return res.status(409).json({ error: 'This session ID don already deploy on the free panel.' })
+      const envObj = { SESSION_ID, OWNER_NUMBER, OWNER_NAME, BOT_NAME, PREFIX, WORKTYPE, TIMEZONE }
+      try {
+        const s = await panel.createPanelServer({ name, environment: envObj })
+        return res.json({ provider: 'panel', url: s.url })
+      } catch (e) {
+        if (e.full) return res.status(503).json({ error: 'Free panel slots full for now. Try Render option.' })
+        console.error(e.detail || e); return res.status(500).json({ error: 'Free panel deploy fail. Try again or use Render option.' })
+      }
+    }
+
     if (await findByName(name)) return res.status(409).json({ error: 'This session ID don already deploy. Use Login.' })
     if ((await countServices()) >= MAX) return res.status(503).json({ error: 'Slots full for now. Try again later.' })
 
