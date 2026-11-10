@@ -100,12 +100,7 @@ app.post('/api/deploy', limit, async (req, res) => {
     if (b.provider === 'panel') {
       if (!panel.enabled) return res.status(503).json({ error: 'Free panel no dey ready now. Use Render option.' })
       if (await panel.findPanelServer(name)) return res.status(409).json({ error: 'This session ID don already deploy on the free panel.' })
-      // Egg 17 settings: download the bot from LOADER_REPO, then run `npm start`.
-      const envObj = {
-        SESSION_ID, OWNER_NUMBER, OWNER_NAME, BOT_NAME, PREFIX, WORKTYPE, TIMEZONE,
-        GIT_ADDRESS: LOADER_REPO, USER_UPLOAD: '0', AUTO_UPDATE: '0', BRANCH: 'main',
-        USE_MANUAL_COMMAND: '0', USE_NPM_START: '1', MAIN_FILE: 'index.js', NODE_ARGS: ''
-      }
+      const envObj = { SESSION_ID, OWNER_NUMBER, OWNER_NAME, BOT_NAME, PREFIX, WORKTYPE, TIMEZONE }
       try {
         const s = await panel.createPanelServer({ name, environment: envObj })
         return res.json({ provider: 'panel', url: s.url })
